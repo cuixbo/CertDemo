@@ -18,7 +18,8 @@ class RetrofitManager private constructor() {
         private const val DEFAULT_READ_TIME_OUT = 30
         private const val DEFAULT_WRITE_TIME_OUT = 30
         private const val CA_DOMAIN = "www.jianshu.com";
-        private const val CA_PUBLIC_KEY = "sha256/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+        private const val CA_PUBLIC_KEY = "sha256/PEq+LkznQfqx4wWQRDcBCa7vG6WpapFfY945qBslBew=";
+        private const val CA_PUBLIC_KEY_CENTER = "sha256/5kJvNEMw0KjrCAu7eXY5HZdvyCS13BbA0VJG1RSP91w=";
         val instance: RetrofitManager
             get() = SingletonHolder.retrofitManager
     }
@@ -53,7 +54,7 @@ class RetrofitManager private constructor() {
             .build()
         mRetrofit = Retrofit.Builder()
             .client(okHttpClient)
-            .baseUrl("www.jianshu.com")
+            .baseUrl("https://www.jianshu.com/")
             .addConverterFactory(GsonConverterFactory.create())
             .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
             .build()
