@@ -12,10 +12,14 @@ import javax.net.ssl.TrustManagerFactory
 
 class MainActivity : AppCompatActivity() {
 
+    var certService: CertService? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         testCa()
+
+        certService = RetrofitManager.instance.create(CertService::class.java)
     }
 
     private fun testCa() {
@@ -43,6 +47,9 @@ class MainActivity : AppCompatActivity() {
             val ssl_ctx = SSLContext.getInstance("TLS")
             // 定义：public static SSLContext ssl_ctx = null;
             ssl_ctx.init(null, tmf.trustManagers, SecureRandom())
+
+            certService?.getInfo()
+
         } catch (e: Exception) {
             e.printStackTrace()
         }
