@@ -9,6 +9,8 @@ import retrofit2.http.POST
  * @date 2020/4/21
  */
 interface CertService {
+//    sohu
+//    @GET("a/390003277_114731")
 
     @GET("p/19f311d81b6d")
     fun getInfo(): Observable<String>
