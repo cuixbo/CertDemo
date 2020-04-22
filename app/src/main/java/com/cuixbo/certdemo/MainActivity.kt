@@ -12,6 +12,7 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.CertificatePinner
+import okio.ByteString
 import java.io.InputStream
 import java.net.URL
 import java.security.KeyStore
@@ -68,6 +69,7 @@ class MainActivity : AppCompatActivity() {
             keyStore.load(null, null)
             keyStore.setCertificateEntry(alias, certificate)
 
+            Log.e("xbc", "notBefore:" + certificate.notBefore.toLocaleString())
             Log.e("xbc", "notAfter:" + certificate.notAfter.toLocaleString())
             return certificate.notAfter
         } catch (e: Exception) {
@@ -187,9 +189,16 @@ class JianShuTrustManager : X509TrustManager {
     override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
         //TODO("Not yet implemented")
         val pubkey = chain?.get(0)?.publicKey.toString()
-        val cate= chain?.get(0)
+
+        val cate = chain?.get(0)
+        if (cate != null) {
+            val base64 = CertificatePinner.pin(cate)
+            Log.e("xbc", "base64:$base64");
+        }
+
 //        cate.signature
         Log.e("xbc", "pubkey:$pubkey");
+
     }
 
     override fun getAcceptedIssuers(): Array<X509Certificate?> {
