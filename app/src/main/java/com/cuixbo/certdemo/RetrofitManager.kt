@@ -23,8 +23,8 @@ class RetrofitManager private constructor() {
         private const val BASE_URL = "https://www.jianshu.com/";
 
         private const val CA_DOMAIN = "www.jianshu.com";
-        private const val CA_PUBLIC_KEY = "sha256/PEq+LkznQfqx4wWQRDcBCa7vG6WpapFfY945qBslBew=";
-        private const val CA_PUBLIC_KEY_CENTER =
+        const val CA_PUBLIC_KEY = "sha256/PEq+LkznQfqx4wWQRDcBCa7vG6WpapFfY945qBslBew=";
+        const val CA_PUBLIC_KEY_CENTER =
             "sha256/5kJvNEMw0KjrCAu7eXY5HZdvyCS13BbA0VJG1RSP91w=";
 
 //        private const val CA_DOMAIN = "www.sohu.com";
