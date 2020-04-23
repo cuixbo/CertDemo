@@ -12,6 +12,7 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import okhttp3.CertificatePinner
+import org.apache.http.conn.ssl.SSLSocketFactory.STRICT_HOSTNAME_VERIFIER
 import java.net.URL
 import java.security.KeyStore
 import java.security.cert.Certificate
@@ -114,14 +115,27 @@ class JianShuTrustManager : X509TrustManager {
             val pinner = CertificatePinner.pin(cate)
             Log.e("xbc", "Pinner:$pinner");
         }
+
         // TODO map 转换
-        throw CertificateException("this Certificate is not valid")
+        var result: Boolean = false
+        chain?.forEach {
+            val pinner = CertificatePinner.pin(it)
+            result = when (pinner) {
+                RetrofitManager.CA_PUBLIC_KEY -> true
+                RetrofitManager.CA_PUBLIC_KEY_CENTER -> true
+                else -> false
+            }
+            if (result) return@forEach
+        }
+        if (!result) {
+            throw CertificateException("this Certificate is not valid")
+        }
     }
 
     override fun getAcceptedIssuers(): Array<X509Certificate?> {
         Log.e("xbc", "getAcceptedIssuers");
 //        CertificateUtil.getCertificate(R.raw.jianshu)
-        return arrayOfNulls(0)
+        return arrayOf()
     }
 }
 
