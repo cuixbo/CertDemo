@@ -49,13 +49,13 @@ class RetrofitManager private constructor() {
             // 写入超时时间
             .writeTimeout(DEFAULT_WRITE_TIME_OUT, TimeUnit.SECONDS)
             // 日志拦截器
-            .certificatePinner(
-                CertificatePinner.Builder()
-                    .add(CA_DOMAIN, CA_PUBLIC_KEY)
-                    .add(CA_DOMAIN, CA_PUBLIC_KEY_CENTER)
-                    .build()
-            )
-            .hostnameVerifier(JianShuHostnameVerifier())
+//            .certificatePinner(
+//                CertificatePinner.Builder()
+////                    .add(CA_DOMAIN, CA_PUBLIC_KEY)
+//                    .add(CA_DOMAIN, CA_PUBLIC_KEY_CENTER)
+//                    .build()
+//            )
+//            .hostnameVerifier(JianShuHostnameVerifier())
             .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
             .build()
 

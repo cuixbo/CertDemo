@@ -43,9 +43,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         tv_text.setOnClickListener {
-            testGetCertInfo()
-//            testOKHttpApi()
-            testHttpsUrlConnectionApi()
+//            testGetCertInfo()
+            testOKHttpApi()
+//            testHttpsUrlConnectionApi()
         }
     }
 
@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
                 val conn = url.openConnection() as HttpsURLConnection
                 conn.sslSocketFactory = CertificateUtil.getSSLSocketFactory(this, R.raw.jianshu)
                 conn.requestMethod = "GET"
-                conn.hostnameVerifier = JianShuHostnameVerifier()
+//                conn.hostnameVerifier = JianShuHostnameVerifier()
                 conn.connect()
                 val input = conn.inputStream
                 val statusCode = conn.responseCode
@@ -217,9 +217,8 @@ class CertificateUtil {
 
                 // 用 TrustManager 初始化一个 SSLContext
                 val sslContext = SSLContext.getInstance("TLS")
-                sslContext.init(null, arrayOf(JianShuTrustManager()), null)
+                sslContext.init(null, tmf.trustManagers, null)
                 return sslContext.socketFactory
-
             } catch (e: Exception) {
                 e.printStackTrace()
                 return null

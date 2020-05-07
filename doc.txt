@@ -1,0 +1,231 @@
+
+前言：
+Android中所谓网络安全，其实说的是如何保证你的请求不被 窃听、篡改、伪装。
+HTTP采用的是明文通信是不可靠通信协议，而HTTPS则是在HTTP协议上又加了一层TSL协议，是可靠的安全的通信协议。
+Android 9.0（API 28）开始，系统以及默认禁止应用使用HTTP协议进行明文传输了，而是建议使用更可靠的HTTPS加密协议进行传输。
+其实早在Android 6.0 开始，谷歌就已经开始着手处理网络安全问题了。
+
+我们在处理Android网络安全这个问题上，需要考虑这个几个问题：
+1.如何使用HTTPS进行网络安全传输？
+2.如何保证我们的网络请求信息不被窃听和篡改？
+3.如何防止我们的应用被中间人攻击？
+4.如何防止我们的应用网络请求被抓包工具抓包？
+
+
+
+一.NetworkSecurityConfig
+Android系统从6.0就已经开始着手处理网络安全问题了。
+API 23(6.0) 开始新增usesCleartextTraffic标签，用来配置是否允许使用明文传输，默认是可以的。
+<application
+	android:usesCleartextTraffic="true" // API 23(6.0) 开始可以设置是否允许明文传输
+	android:networkSecurityConfig="@xml/network_security_config" // API 24(7.0) 开始可以自定义网络安全设置
+	...
+	>
+</application>
+API 24(7.0) 开始新增networkSecurityConfig标签，用来配置具体的网络安全设置，其内部cleartextTrafficPermitted标签会覆盖usesCleartextTraffic标签
+
+其实在系统在API 23(6.0)开始就已经存在networkSecurityConfig了，只不过是添加了默认的设置；
+未设置的任何值均使用平台默认值。
+
+面向 Android 9（API 级别 28）及更高版本应用的默认配置如下所示：
+
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+
+面向 Android 7.0（API 级别 24）到 Android 8.1（API 级别 27）的应用的默认配置如下所示：
+
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+
+面向 Android 6.0（API 级别 23）及更低版本应用的默认配置如下所示：
+
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+二.http和https问题
+
+
+1.当你将targetSdkVersion设为27或更低时，你在9.0的手机中发起HTTP请求，一切都是正常的。
+2.但当你将targetSdkVersion设为28或更高时，如果你在9.0的手机中发起HTTP请求，你将会得到下面的错误日志：
+
+W/System.err: java.net.UnknownServiceException: CLEARTEXT communication to www.jianshu.com not permitted by network security policy
+W/System.err:     at okhttp3.internal.connection.RealConnection.connect(RealConnection.java:148)
+W/System.err:     at okhttp3.internal.connection.StreamAllocation.findConnection(StreamAllocation.java:258)
+W/System.err:     at okhttp3.internal.connection.StreamAllocation.findHealthyConnection(StreamAllocation.java:135)
+W/System.err:     at okhttp3.internal.connection.StreamAllocation.newStream(StreamAllocation.java:114)
+W/System.err:     at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.java:42)
+
+那是因为：
+Android 9.0（API 28） 开始默认使用加密连接并禁止网络明文传输，也就是说像HTTP这种明文传输协议将不被允许，而要用HTTPS安全传输协议。
+
+API 28 开始， cleartextTrafficPermitted配置默认为false，翻译过来就是“不允许明文传输”
+
+那如果你就想在9.0的手机上进行明文传输，怎么办呢？
+在AndroidManifest.xml中添加：
+<application
+    android:networkSecurityConfig="@xml/network_security_config">
+</application>
+在xml/network_security_config.xml中添加，
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true"/>
+</network-security-config>
+
+
+
+五、怎么防中间人攻击
+
+正常来讲，中间人攻击，中间人会伪装成我们的客户端与服务器，双向拦截客户端与远程服务器的请求，分别向客户端和服务器发送自己的合法的证书，让双方都误认为是在跟正确的人通信。它的证书往往都是经过正规CA即构颁发的合法的证书。这个时候如果客户端和服务器都没有进行证书校验或者域名校验的话，那么中间人攻击就得逞了。
+为了防止普通的中间人攻击，其实很简单，在我们的HTTPS请求中添加域名校验流程就可以了。
+
+
+class JianShuHostnameVerifier : HostnameVerifier {
+    companion object {
+        private val HOSTNAME_VERIFIER = HttpsURLConnection.getDefaultHostnameVerifier()
+    }
+
+    override fun verify(hostname: String?, session: SSLSession?): Boolean {
+        Log.e("xbc", "JianShuHostnameVerifier.verify:$hostname");
+        return HOSTNAME_VERIFIER.verify(hostname, session)
+    }
+}
+
+在HttpsURLConnection中使用：
+				val apiUrl = "http://www.jianshu.com/p/19f311d81b6d"
+                val url = URL(apiUrl)
+                val conn = url.openConnection() as HttpsURLConnection
+                conn.sslSocketFactory = CertificateUtil.getSSLSocketFactory(this, R.raw.jianshu)
+                conn.requestMethod = "GET"
+                conn.hostnameVerifier = JianShuHostnameVerifier()
+                conn.connect()
+                val input = conn.inputStream
+                val statusCode = conn.responseCode
+
+在OkHttp中使用：
+ 		// OkHttpClient配置
+        val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(DEFAULT_CONNECT_TIME_OUT, TimeUnit.SECONDS)
+            .readTimeout(DEFAULT_READ_TIME_OUT, TimeUnit.SECONDS)
+            .writeTimeout(DEFAULT_WRITE_TIME_OUT, TimeUnit.SECONDS)
+            .hostnameVerifier(JianShuHostnameVerifier())
+            .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+            .build()
+
+
+
+Charles这种中间代理，其实也算一种中间人，只不过给双方的证书不是正规CA即构颁发的，而是自己伪造的，并且伪造的这个证书内容跟服务器的证书内容一样，然后通过让用户在手机中安装Charles作为CA即构的根证书，安装到用户的手机中，作为用户级证书。然后通过这个用户级证书就可以校验它伪造的那个假证书了，从而通过后了它这个中间人来请求信息。
+为了防止Charles抓包，我们可以禁用用户级证书或者使用证书固定的方式来处理。
+
+
+三.网络安全-防抓包问题
+
+如果应用不做任何处理，采取默认网络安全配置，面向Https的网络请求抓包，在API 24(7.0)之前，通过Chales是可以做到抓包的，而从API 24(7.0)起，Charles用户证书将不被信任，Charles也就无法进行抓包了。
+
+如果想让应用可以抓包，则可以配置安全设置，添加<certificates src="user"/>来信任用户证书，这样Chales就可以抓包了。
+如果我们不想让应用被抓包，怎么办呢，这个问题有些复杂，需要处理API 24(7.0)之前的网络安全问题。
+首先必需要自定义网络安全设置，去掉<certificates src="user"/>，意味着不允许信任用户证书。
+    <base-config cleartextTrafficPermitted="true">
+    	...
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+        ...
+    </base-config>
+然而这么设置，7.0及以后的手机就不能被抓包了，而6.0的手机依然还是可以被抓包的，那么如何使6.0的手机也无法被抓包呢？
+
+四、证书固定
+对服务器的证书进行校验，可以选择只对于API 24(7.0)之前的手机进行证书固定，也可以对所有手机都采用证书固定（因为别人可以root手机）
+
+证书固定有几种方式：
+1.将服务器证书内置在应用的assets资源中，进行固定校验；
+	可以配置SSLSocketFactory
+		fun getSSLSocketFactory(context: Context, certRes: Int): SSLSocketFactory? {
+            try {
+                // 取到证书的输入流
+                val input = context.resources.openRawResource(certRes)
+                val alias = "jianshu"
+                val certificate = CertificateFactory.getInstance("X.509").generateCertificate(input)
+
+                // 创建 Keystore 包含我们的证书
+                val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+                keyStore.load(null, null)
+                keyStore.setCertificateEntry(alias, certificate)
+
+                // 使用默认算法 创建一个 TrustManager 仅把 Keystore 中的证书 作为信任的锚点
+                val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+                tmf.init(keyStore)
+
+                // 用 TrustManager 初始化一个 SSLContext
+                val sslContext = SSLContext.getInstance("TLS")
+                sslContext.init(null, tmf.trustManagers, null)
+                return sslContext.socketFactory
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return null
+            }
+        }
+    这样配置，就只有指定证书的请求才会被允许通过。当然你也可以自己去实现X509TrustManager，做自定义的信任规则。
+2.使用服务器证书的公钥PIN指纹进行固定校验（这种方式比较方便了）；
+	可以配置CertificatePinner
+        // OkHttpClient配置
+        val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(DEFAULT_CONNECT_TIME_OUT, TimeUnit.SECONDS)
+            .readTimeout(DEFAULT_READ_TIME_OUT, TimeUnit.SECONDS)
+            .writeTimeout(DEFAULT_WRITE_TIME_OUT, TimeUnit.SECONDS)
+            .certificatePinner(
+                CertificatePinner.Builder()
+                    .add(CA_DOMAIN, CA_PUBLIC_KEY)
+                    .add(CA_DOMAIN, CA_PUBLIC_KEY_CENTER)
+                    .build()
+            )
+            .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+            .build()
+
+以上两种方式均可实现证书固定，OkHttp也都支持这两种方式，选择其中一种即可。HttpsUrlConnection可以使用第一种方式配置。
+
+
+networkSecurityConfig 配置
+
+六、证书固定所带来的证书过期问题
+正常我们所购买的服务器证书都是1-3年的有效期，那么如果进行了证书固定，也就意味着，到期之后，APP将无法访问网络了。
+这里我们就需要处理证书更新的问题，然而证书通过网络更新又会存在不安全的因素，需要单独特殊处理保证安全传输，那就是另外一个话题了。
+当然还有其他的方式，我们还可以使用添加，中间级证书的方式来固定证书，中间级证书的有效期比较长，长达20-30年。我们可以通过添加中间级证书固定再加上域名校验的方式就可以了
+		// OkHttpClient配置
+        val okHttpClient = OkHttpClient.Builder()
+            .connectTimeout(DEFAULT_CONNECT_TIME_OUT, TimeUnit.SECONDS)
+            .readTimeout(DEFAULT_READ_TIME_OUT, TimeUnit.SECONDS)
+            .writeTimeout(DEFAULT_WRITE_TIME_OUT, TimeUnit.SECONDS)
+            .certificatePinner(
+                CertificatePinner.Builder()
+                    .add(CA_DOMAIN, CA_PUBLIC_KEY_CENTER)
+                    .build()
+            )
+            .hostnameVerifier(JianShuHostnameVerifier())
+            .addInterceptor(HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY))
+            .build()
+
+八、有没有更简单方便的方式？
+
+具体可以参考这篇文章 https://www.jianshu.com/p/5708da0cf2b0
+
+
+
+七、Debug开发模式怎么抓包
+按照上面说的去做，我们的应用已经足够安全了，但是我们在开发阶段怎么去抓包调试呢？
+
+
+
+
+
+

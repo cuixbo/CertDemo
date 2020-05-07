@@ -1,14 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
+    <domain-config>
+        <domain includeSubdomains="true">jianshu.com</domain>
+        <trust-anchors>
+            <certificates src="@raw/jianshu_center" />
+        </trust-anchors>
+<!--        <pin-set expiration="2020-12-01">-->
+<!--            <pin digest="SHA-256">PEq+LkznQfqx4wWQRDcBCa7vG6WpapFfY945qBslBew=</pin>-->
+<!--            &lt;!&ndash; backup pin &ndash;&gt;-->
+<!--            <pin digest="SHA-256">5kJvNEMw0KjrCAu7eXY5HZdvyCS13BbA0VJG1RSP91w=</pin>-->
+<!--        </pin-set>-->
+    </domain-config>
     <debug-overrides>
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
+            <certificates src="user"
+                overridePins="false"
+                />
         </trust-anchors>
     </debug-overrides>
 </network-security-config>
